@@ -2,6 +2,7 @@ import { attempt, isError } from 'lodash';
 import TestRepoBackend from "./test-repo/implementation";
 import GitHubBackend from "./github/implementation";
 import GitGatewayBackend from "./git-gateway/implementation";
+import BeakerBackend from "./beaker/implementation";
 import { resolveFormat } from "../formats/formats";
 import { selectListMethod, selectEntrySlug, selectEntryPath, selectAllowNewEntries, selectFolderEntryExtension } from "../reducers/collections";
 import { createEntry } from "../valueObjects/Entry";
@@ -294,6 +295,8 @@ export function resolveBackend(config) {
       return new Backend(new GitHubBackend(config), authStore);
     case "git-gateway":
       return new Backend(new GitGatewayBackend(config), authStore);
+    case "beaker":
+      return new Backend(new BeakerBackend(config), authStore);
     default:
       throw new Error(`Backend not found: ${ name }`);
   }
