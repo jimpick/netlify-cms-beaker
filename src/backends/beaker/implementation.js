@@ -1,5 +1,11 @@
+import semaphore from "semaphore";
 import AuthenticationPage from './AuthenticationPage';
-import { fileExtension } from '../../lib/pathHelper'
+import { fileExtension } from '../../lib/pathHelper';
+
+const MAX_CONCURRENT_DOWNLOADS = 10;
+
+const origin = document.location.origin;
+const archive = new DatArchive(document.location.origin);
 
 window.repoFiles = window.repoFiles || {};
 
@@ -47,23 +53,10 @@ export default class TestRepo {
   entriesByFolder(collection, extension) {
     const entries = [];
     const folder = collection.get('folder');
-    if (folder) {
-      for (const path in window.repoFiles[folder]) {
-        if (fileExtension(path) !== extension) {
-          continue;
-        }
-
-        const file = { path: `${ folder }/${ path }` };
-        entries.push(
-          {
-            file,
-            data: window.repoFiles[folder][path].content,
-          }
-        );
-      }
-    }
-    console.log('Jim entriesByFolder', collection, extension, entries);
-    return Promise.resolve(entries);
+    const promise = archive.readdir(folder)
+      .then(files => files.filter(file => fileExtension(file) === extension))
+      .then(this.fetchFiles(folder));
+    return promise
   }
 
   entriesByFiles(collection) {
@@ -75,6 +68,30 @@ export default class TestRepo {
       file,
       data: getFile(file.path).content,
     })));
+  }
+
+  fetchFiles = (folder) => (files) => {
+    const sem = semaphore(MAX_CONCURRENT_DOWNLOADS);
+    const promises = [];
+    files.forEach((file) => {
+      promises.push(new Promise((resolve, reject) => {
+        const path = `${folder}/${file}`
+        return sem.take(() => archive.readFile(path).then((data) => {
+          resolve({
+            file: {
+              name: file,
+              path
+            },
+            data
+          });
+          sem.leave();
+        }).catch((err) => {
+          sem.leave();
+          reject(err);
+        }))
+      }));
+    });
+    return Promise.all(promises);
   }
 
   getEntry(collection, slug, path) {

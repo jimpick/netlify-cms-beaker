@@ -55,6 +55,10 @@ module.exports = merge.smart(require('./webpack.base.js'), {
     new CopyWebpackPlugin([
       {
         from: '../example/config.yml'
+      },
+      {
+        from: '../example/site/',
+        to: 'site/'
       }
     ]),
     new webpack.SourceMapDevToolPlugin({
