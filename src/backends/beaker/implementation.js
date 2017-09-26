@@ -5,18 +5,9 @@ import { fileExtension } from '../../lib/pathHelper';
 const MAX_CONCURRENT_DOWNLOADS = 10;
 
 const origin = document.location.origin;
-const archive = new DatArchive(document.location.origin);
+const archive = window.DatArchive ? new DatArchive(document.location.origin) : null;
 
-function nameFromEmail(email) {
-  return email
-    .split('@').shift().replace(/[.-_]/g, ' ')
-    .split(' ')
-    .filter(f => f)
-    .map(s => s.substr(0, 1).toUpperCase() + (s.substr(1) || ''))
-    .join(' ');
-}
-
-export default class TestRepo {
+export default class Beaker {
   constructor(config) {
     this.config = config;
   }
@@ -28,7 +19,7 @@ export default class TestRepo {
   }
 
   authenticate(state) {
-    return Promise.resolve({ email: state.email, name: nameFromEmail(state.email) });
+    return Promise.resolve({ email: 'beaker@example.com', name: 'beaker' });
   }
 
   logout() {
