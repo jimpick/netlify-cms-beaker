@@ -7,17 +7,6 @@ const MAX_CONCURRENT_DOWNLOADS = 10;
 const origin = document.location.origin;
 const archive = new DatArchive(document.location.origin);
 
-window.repoFiles = window.repoFiles || {};
-
-function getFile(path) {
-  const segments = path.split('/');
-  let obj = window.repoFiles;
-  while (obj && segments.length) {
-    obj = obj[segments.shift()];
-  }
-  return obj || {};
-}
-
 function nameFromEmail(email) {
   return email
     .split('@').shift().replace(/[.-_]/g, ' ')
@@ -60,14 +49,7 @@ export default class TestRepo {
   }
 
   entriesByFiles(collection) {
-    const files = collection.get('files').map(collectionFile => ({
-      path: collectionFile.get('file'),
-      label: collectionFile.get('label'),
-    }));
-    return Promise.all(files.map(file => ({
-      file,
-      data: getFile(file.path).content,
-    })));
+    /* FIXME */
   }
 
   fetchFiles = (folder) => (files) => {
@@ -95,30 +77,19 @@ export default class TestRepo {
   }
 
   getEntry(collection, slug, path) {
-    return Promise.resolve({
-      file: { path },
-      data: getFile(path).content,
-    });
+    return archive.readFile(path).then(data => ({ file: { path }, data }));
   }
 
   persistEntry(entry, mediaFiles = [], options) {
-    const newEntry = options.newEntry || false;
-    const folder = entry.path.substring(0, entry.path.lastIndexOf('/'));
-    const fileName = entry.path.substring(entry.path.lastIndexOf('/') + 1);
-    window.repoFiles[folder] = window.repoFiles[folder] || {};
-    window.repoFiles[folder][fileName] = window.repoFiles[folder][fileName] || {};
-    if (newEntry) {
-      window.repoFiles[folder][fileName] = { content: entry.raw };
-    } else {
-      window.repoFiles[folder][fileName].content = entry.raw;
-    }
-    return Promise.resolve();
+    // FIXME: Might not work if directory doesn't exist
+    const promise = archive.writeFile(entry.path, entry.raw)
+      .then(() => { archive.commit() });
+    return promise;
   }
 
   deleteFile(path, commitMessage) {
-    const folder = path.substring(0, path.lastIndexOf('/'));
-    const fileName = path.substring(path.lastIndexOf('/') + 1);
-    delete window.repoFiles[folder][fileName];
-    return Promise.resolve();
+    const promise = archive.unlink(path)
+      .then(() => { archive.commit() });
+    return promise;
   }
 }
