@@ -4,8 +4,10 @@ import Button from "react-toolbox/lib/button";
 import { Card, Icon } from "../../components/UI";
 import logo from "../git-gateway/netlify_logo.svg";
 import styles from "../git-gateway/AuthenticationPage.css";
+import GithubCorner from "./githubCorner";
 
 const archive = window.DatArchive ? new DatArchive(document.location.origin) : null;
+const githubUrl = "https://github.com/jimpick/netlify-cms-beaker";
 
 export default class AuthenticationPage extends React.Component {
   static propTypes = {
@@ -90,6 +92,7 @@ export default class AuthenticationPage extends React.Component {
       }
     }
     return (<section className={styles.root}>
+      <GithubCorner url={githubUrl} />
       <Card className={styles.card}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <img src={logo} style={{ width: '20%', marginRight: '0.8em' }} role="presentation" />
