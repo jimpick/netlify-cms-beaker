@@ -27,7 +27,17 @@ export default class AuthenticationPage extends React.Component {
     this.props.onLogin(this.state);
   };
 
+  handleFork = (e) => {
+    e.preventDefault();
+    DatArchive.fork(document.location.origin).then(newArchive => {
+      if (newArchive && newArchive.url) {
+        document.location.href = newArchive.url;
+      }
+    });
+  };
+
   render() {
+    const { isOwner } = this.state;
     let content;
     if (!archive) {
       content =
@@ -41,23 +51,43 @@ export default class AuthenticationPage extends React.Component {
           </p>
         </div>;
     } else {
-      content =
-        <div>
-          <p className={styles.message}>
-            <strong>Excellent!</strong>
-          </p>
-          <p className={styles.message}>
-            You are running this page inside Beaker Browser and
-            you own this Dat Archive, so you can edit this blog.
-          </p>
-          <Button
-            className={styles.button}
-            raised
-            onClick={this.handleLogin}
-          >
-            <Icon type="login" /> Login
-          </Button>
-        </div>;
+      if (isOwner) {
+        content =
+          <div>
+            <p className={styles.message}>
+              <strong>Excellent!</strong>
+            </p>
+            <p className={styles.message}>
+              You are running this page inside Beaker Browser and
+              you own this Dat Archive, so you can edit this blog.
+            </p>
+            <Button
+              className={styles.button}
+              raised
+              onClick={this.handleLogin}
+            >
+              <Icon type="login" /> Login
+            </Button>
+          </div>;
+      } else {
+        content =
+          <div>
+            <p className={styles.message}>
+              <strong>You aren't the owner of this blog, so you can't edit it.</strong>
+            </p>
+            <p className={styles.message}>
+              But, you can fork it inside Beaker Browser, and make your own!
+            </p>
+            <Button
+              className={styles.button}
+              raised
+              onClick={this.handleFork}
+            >
+              <Icon type="publish" /> Fork this Dat
+            </Button>
+          </div>;
+
+      }
     }
     return (<section className={styles.root}>
       <Card className={styles.card}>
