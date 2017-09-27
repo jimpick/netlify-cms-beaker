@@ -2,8 +2,8 @@ backend:
   name: beaker
   delay: 0.1
 
-media_folder: "site/static/img/blog" # Folder where user uploaded files should go
-public_folder: "img/blog"
+media_folder: "site/static/images" # Folder where user uploaded files should go
+#public_folder: "/static/images" # For Hugo
 
 collections: # A list of collections the CMS should be able to edit
   - name: "blog" # Used in routes, ie.: /admin/collections/:slug/edit
