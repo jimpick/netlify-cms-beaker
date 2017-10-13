@@ -1,4 +1,4 @@
-import { without } from 'lodash';
+import { without, flatten } from 'lodash';
 import u from 'unist-builder';
 import mdastDefinitions from 'mdast-util-definitions';
 
@@ -46,8 +46,17 @@ export default function remarkSquashReferences() {
      */
     if (['imageReference', 'linkReference'].includes(node.type)) {
       const type = node.type === 'imageReference' ? 'image' : 'link';
-      const { title, url } = getDefinition(node.identifier) || {};
-      return u(type, { title, url, alt: node.alt }, children);
+      const definition = getDefinition(node.identifier);
+
+      if (definition) {
+        const { title, url } = definition;
+        return u(type, { title, url, alt: node.alt }, children);
+      }
+
+      const pre = u('text', node.type === 'imageReference' ? '![' : '[');
+      const post = u('text', ']');
+      const nodes = children || [ u('text', node.alt) ];
+      return [ pre, ...nodes, post];
     }
 
     /**
@@ -60,6 +69,6 @@ export default function remarkSquashReferences() {
 
     const filteredChildren = without(children, null);
 
-    return { ...node, children: filteredChildren };
+    return { ...node, children: flatten(filteredChildren) };
   }
 }

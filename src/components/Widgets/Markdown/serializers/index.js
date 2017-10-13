@@ -1,4 +1,4 @@
-import { get, isEmpty, reduce, pull } from 'lodash';
+import { get, isEmpty, reduce, pull, trimEnd } from 'lodash';
 import unified from 'unified';
 import u from 'unist-builder';
 import markdownToRemarkPlugin from 'remark-parse';
@@ -16,7 +16,9 @@ import remarkToSlate from './remarkSlate';
 import remarkSquashReferences from './remarkSquashReferences';
 import remarkImagesToText from './remarkImagesToText';
 import remarkShortcodes from './remarkShortcodes';
-import remarkEscapeMarkdownEntities from './remarkEscapeMarkdownEntities'
+import remarkEscapeMarkdownEntities from './remarkEscapeMarkdownEntities';
+import remarkStripTrailingBreaks from './remarkStripTrailingBreaks';
+import remarkAllowHtmlEntities from './remarkAllowHtmlEntities';
 import slateToRemark from './slateRemark';
 import registry from '../../../../lib/registry';
 
@@ -63,7 +65,9 @@ export const markdownToRemark = markdown => {
    * Parse the Markdown string input to an MDAST.
    */
   const parsed = unified()
-    .use(markdownToRemarkPlugin, { fences: true, pedantic: true, commonmark: true })
+    .use(markdownToRemarkPlugin, { fences: true, commonmark: true })
+    .use(markdownToRemarkRemoveTokenizers, { inlineTokenizers: ['url'] })
+    .use(remarkAllowHtmlEntities)
     .parse(markdown);
 
   /**
@@ -77,6 +81,16 @@ export const markdownToRemark = markdown => {
 
   return result;
 };
+
+
+/**
+ * Remove named tokenizers from the parser, effectively deactivating them.
+ */
+function markdownToRemarkRemoveTokenizers({ inlineTokenizers }) {
+  inlineTokenizers && inlineTokenizers.forEach(tokenizer => {
+    delete this.Parser.prototype.inlineTokenizers[tokenizer];
+  });
+}
 
 
 /**
@@ -102,29 +116,34 @@ export const remarkToMarkdown = obj => {
   const remarkToMarkdownPluginOpts = {
     commonmark: true,
     fences: true,
-    pedantic: true,
     listItemIndent: '1',
 
-    // Settings to emulate the defaults from the Prosemirror editor, not
-    // necessarily optimal. Should eventually be configurable.
+    /**
+     * Settings to emulate the defaults from the Prosemirror editor, not
+     * necessarily optimal. Should eventually be configurable.
+     */
     bullet: '*',
     strong: '*',
     rule: '-',
   };
 
   /**
-   * Escape markdown entities found in text and html nodes within the MDAST.
+   * Transform the MDAST with plugins.
    */
-  const escapedMdast = unified()
+  const processedMdast = unified()
     .use(remarkEscapeMarkdownEntities)
+    .use(remarkStripTrailingBreaks)
     .runSync(mdast);
 
   const markdown = unified()
     .use(remarkToMarkdownPlugin, remarkToMarkdownPluginOpts)
     .use(remarkAllowAllText)
-    .stringify(escapedMdast);
+    .stringify(processedMdast);
 
-  return markdown;
+  /**
+   * Return markdown with trailing whitespace removed.
+   */
+  return trimEnd(markdown);
 };
 
 

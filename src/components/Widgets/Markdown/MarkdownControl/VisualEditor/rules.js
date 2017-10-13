@@ -15,13 +15,13 @@ const enforceNeverEmpty = {
     const hasBlocks = !doc.getBlocks().isEmpty();
     return hasBlocks ? null : {};
   },
-  normalize: transform => {
+  normalize: change => {
     const block = Block.create({
       type: 'paragraph',
-      nodes: [Text.createFromString('')],
+      nodes: [Text.create('')],
     });
-    const { key } = transform.state.document;
-    return transform.insertNodeByKey(key, 0, block).focus();
+    const { key } = change.state.document;
+    return change.insertNodeByKey(key, 0, block).focus();
   },
 };
 
@@ -35,11 +35,44 @@ const shortcodesAtRoot = {
       return node.type === 'shortcode' && doc.getParent(node.key).key !== doc.key;
     });
   },
-  normalize: (transform, doc, node) => {
-    return transform.unwrapNodeByKey(node.key);
+  normalize: (change, doc, node) => {
+    return change.unwrapNodeByKey(node.key);
   },
 };
 
-const rules = [ enforceNeverEmpty, shortcodesAtRoot ];
+/**
+ * Ensure that trailing shortcodes are followed by an empty paragraph.
+ */
+const noTrailingShortcodes = {
+  match: object => object.kind === 'document',
+  validate: doc => {
+    return doc.findDescendant(node => {
+      return node.type === 'shortcode' && doc.getBlocks().last().key === node.key;
+    });
+  },
+  normalize: (change, doc, node) => {
+    const text = Text.create('');
+    const block = Block.create({ type: 'paragraph', nodes: [ text ] });
+    return change.insertNodeByKey(doc.key, doc.get('nodes').size, block);
+  },
+};
+
+/**
+ * Ensure that code blocks contain no marks.
+ */
+const codeBlocksContainPlainText = {
+  match: node => node.type === 'code',
+  validate: node => {
+    const invalidChild = node.getTexts().find(text => !text.getMarks().isEmpty());
+    return invalidChild || null;
+  },
+  normalize: (change, node, invalidChild) => {
+    invalidChild.getMarks().forEach(mark => {
+      change.removeMarkByKey(invalidChild.key, 0, invalidChild.get('characters').size, mark);
+    });
+  },
+};
+
+const rules = [ enforceNeverEmpty, shortcodesAtRoot, noTrailingShortcodes, codeBlocksContainPlainText ];
 
 export default rules;

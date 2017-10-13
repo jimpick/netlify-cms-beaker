@@ -6,7 +6,7 @@ import BeakerBackend from "./beaker/implementation";
 import { resolveFormat } from "../formats/formats";
 import { selectListMethod, selectEntrySlug, selectEntryPath, selectAllowNewEntries, selectFolderEntryExtension } from "../reducers/collections";
 import { createEntry } from "../valueObjects/Entry";
-import slug from 'slug';
+import { sanitizeSlug } from "../lib/urlHelper";
 
 class LocalStorageAuthStore {
   storageKey = "netlify-cms-user";
@@ -43,7 +43,7 @@ const slugFormatter = (template = "{{slug}}", entryData) => {
     return identifier;
   };
 
-  return template.replace(/\{\{([^\}]+)\}\}/g, (_, field) => {
+  const slug = template.replace(/\{\{([^\}]+)\}\}/g, (_, field) => {
     switch (field) {
       case "year":
         return date.getFullYear();
@@ -52,16 +52,24 @@ const slugFormatter = (template = "{{slug}}", entryData) => {
       case "day":
         return (`0${ date.getDate() }`).slice(-2);
       case "slug":
-        return slug(getIdentifier(entryData).trim(), {lower: true});
+        return getIdentifier(entryData).trim();
       default:
-        return slug(entryData.get(field, "").trim(), {lower: true});
+        return entryData.get(field, "").trim();
     }
-  });
+  })
+  // Convert slug to lower-case
+  .toLocaleLowerCase()
+
+  // Replace periods and spaces with dashes.
+  .replace(/[.\s]/g, '-');
+
+  return sanitizeSlug(slug);
 };
 
 class Backend {
-  constructor(implementation, authStore = null) {
+  constructor(implementation, backendName, authStore = null) {
     this.implementation = implementation;
+    this.backendName = backendName;
     this.authStore = authStore;
     if (this.implementation === null) {
       throw new Error("Cannot instantiate a Backend with no implementation");
@@ -71,8 +79,13 @@ class Backend {
   currentUser() {
     if (this.user) { return this.user; }
     const stored = this.authStore && this.authStore.retrieve();
-    if (stored) {
-      return Promise.resolve(this.implementation.setUser(stored)).then(() => stored);
+    if (stored && stored.backendName === this.backendName) {
+      return Promise.resolve(this.implementation.restoreUser(stored)).then((user) => {
+        const newUser = {...user, backendName: this.backendName};
+        // return confirmed/rehydrated user object instead of stored
+        this.authStore.store(newUser);
+        return newUser;
+      });
     }
     return Promise.resolve(null);
   }
@@ -83,8 +96,9 @@ class Backend {
 
   authenticate(credentials) {
     return this.implementation.authenticate(credentials).then((user) => {
-      if (this.authStore) { this.authStore.store(user); }
-      return user;
+      const newUser = {...user, backendName: this.backendName};
+      if (this.authStore) { this.authStore.store(newUser); }
+      return newUser;
     });
   }
 
@@ -290,11 +304,11 @@ export function resolveBackend(config) {
 
   switch (name) {
     case "test-repo":
-      return new Backend(new TestRepoBackend(config), authStore);
+      return new Backend(new TestRepoBackend(config), name, authStore);
     case "github":
-      return new Backend(new GitHubBackend(config), authStore);
+      return new Backend(new GitHubBackend(config), name, authStore);
     case "git-gateway":
-      return new Backend(new GitGatewayBackend(config), authStore);
+      return new Backend(new GitGatewayBackend(config), name, authStore);
     case "beaker":
       return new Backend(new BeakerBackend(config), authStore);
     default:
