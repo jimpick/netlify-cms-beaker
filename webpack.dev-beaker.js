@@ -60,8 +60,12 @@ module.exports = merge.smart(require('./webpack.base.js'), {
         from: '../example/settings.json'
       },
       {
-        from: '../example/site/',
-        to: 'site/'
+        from: '../example/content/',
+        to: 'content/'
+      },
+      {
+        from: '../example/img/',
+        to: 'img/'
       }
     ]),
     new webpack.SourceMapDevToolPlugin({
