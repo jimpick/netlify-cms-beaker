@@ -57,6 +57,9 @@ module.exports = merge.smart(require('./webpack.base.js'), {
         from: '../example/config.yml'
       },
       {
+        from: '../example/settings.json'
+      },
+      {
         from: '../example/site/',
         to: 'site/'
       }

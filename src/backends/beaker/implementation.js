@@ -37,16 +37,11 @@ export default class Beaker {
     const folder = collection.get('folder');
     const promise = archive.readdir(folder)
       .then(files => files.filter(file => fileExtension(file) === extension))
-      .then(this.fetchFiles(folder));
+      .then(this.fetchFilesByFolder(folder));
     return promise
   }
 
-  entriesByFiles(collection) {
-    /* FIXME */
-    console.error('Missing implemention for entriesByFiles', collection);
-  }
-
-  fetchFiles = (folder) => (files) => {
+  fetchFilesByFolder = (folder) => (files) => {
     const sem = semaphore(MAX_CONCURRENT_DOWNLOADS);
     const promises = [];
     files.forEach((file) => {
@@ -62,6 +57,37 @@ export default class Beaker {
           });
           sem.leave();
         }).catch((err) => {
+          console.error('Error:', err)
+          sem.leave();
+          reject(err);
+        }))
+      }));
+    });
+    return Promise.all(promises);
+  }
+
+  entriesByFiles(collection) {
+    const files = collection.get("files").map(collectionFile => ({
+      path: collectionFile.get("file"),
+      label: collectionFile.get("label"),
+    }));
+    return this.fetchFiles(files);
+  }
+
+  fetchFiles = (files) => {
+    const sem = semaphore(MAX_CONCURRENT_DOWNLOADS);
+    const promises = [];
+    files.forEach((file) => {
+      promises.push(new Promise((resolve, reject) => {
+        const { path } = file
+        return sem.take(() => archive.readFile(path).then((data) => {
+          resolve({
+            file,
+            data
+          });
+          sem.leave();
+        }).catch((err) => {
+          console.error('Error:', err)
           sem.leave();
           reject(err);
         }))
