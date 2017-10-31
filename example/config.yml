@@ -31,3 +31,15 @@ collections: # A list of collections the CMS should be able to edit
           - label: Description
             name: description
             widget: string
+          - label: Theme Color
+            name: themeColor
+            widget: select
+            options:
+              - theme-base-08
+              - theme-base-09
+              - theme-base-0a
+              - theme-base-0b
+              - theme-base-0c
+              - theme-base-0d
+              - theme-base-0e
+              - theme-base-0f

@@ -1,4 +1,5 @@
 {
-  "title": "Title",
-  "description": "Description"
+  "title": "Blog Title",
+  "description": "Blog Description",
+  "themeColor": "theme-base-09"
 }
